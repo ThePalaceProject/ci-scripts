@@ -85,7 +85,7 @@ if __name__ == "__main__":
             push_info = origin.push(repo.heads[options.origin_branch], force=True)
             for info in push_info:
                 if info.flags & info.ERROR:
-                    raise SyncException(push_info.summary)
+                    raise SyncException(info.summary)
             print("Updated!")
 
     except SyncException as e:
