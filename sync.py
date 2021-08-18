@@ -58,8 +58,6 @@ if __name__ == "__main__":
 
         # Origin branch does not exist in local repo
         if options.origin_branch not in repo.heads:
-            print("Local copy of origin branch ({}) does not exist, creating it from upstream."
-                  .format(options.origin_branch))
             repo.create_head(options.origin_branch, upstream.refs[options.upstream_branch])
 
         if options.origin_branch in origin.refs:
@@ -78,7 +76,9 @@ if __name__ == "__main__":
         else:
             repo.heads[options.origin_branch].reference = upstream.refs[options.upstream_branch].commit
             print("Pushing to origin ({})".format(repo.heads[options.origin_branch]))
-            origin.push(repo.heads[options.origin_branch], force=True)
+            push_info = origin.push(repo.heads[options.origin_branch], force=True)
+            for info in push_info:
+                print(info.summary)
             print("Updated!")
 
     except SyncException as e:
