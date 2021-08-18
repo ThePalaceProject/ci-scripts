@@ -58,7 +58,7 @@ jobs:
       - name: Checkout CI scripts
         uses: actions/checkout@v2
         with:
-          repository: 'jonathangreen/ci-scripts'
+          repository: 'ThePalaceProject/ci-scripts'
           path: ci
 
       - name: Set up Python
