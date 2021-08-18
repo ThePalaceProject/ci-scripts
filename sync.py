@@ -1,6 +1,7 @@
-# Script to sync with upstream source via CI
+# Script to sync with upstream.
 #
-# Meant to be called in a github action.
+# Meant to be called via CI
+
 import sys
 
 import configargparse
