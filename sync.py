@@ -45,12 +45,18 @@ if __name__ == "__main__":
         upstream_url = REMOTE_URL.format(options.upstream_org, options.upstream_repo)
         print("Fetching upstream: {}.".format(upstream_url))
         upstream = repo.create_remote('upstream', upstream_url)
-        upstream.fetch(prune=True)
+        fetch_info = upstream.fetch(prune=True)
+        for info in fetch_info:
+            if info.flags & info.ERROR:
+                raise SyncException(info.note)
 
         # Fetch the origin remote
         origin = repo.remotes.origin
         print("Fetching origin: {}.".format(origin.url))
-        origin.fetch(prune=True)
+        fetch_info = origin.fetch(prune=True)
+        for info in fetch_info:
+            if info.flags & info.ERROR:
+                raise SyncException(info.note)
 
         # Fail if the upstream branch does not exist
         if options.upstream_branch not in upstream.refs:
@@ -78,11 +84,13 @@ if __name__ == "__main__":
             print("Pushing to origin ({})".format(repo.heads[options.origin_branch]))
             push_info = origin.push(repo.heads[options.origin_branch], force=True)
             for info in push_info:
-                print(info.summary)
+                if info.flags & info.ERROR:
+                    raise SyncException(push_info.summary)
             print("Updated!")
 
     except SyncException as e:
-        print("{} Exiting.".format(e.message))
+        error = "\n".join([e.message.strip(), "Exiting."])
+        print(error)
         sys.exit(-1)
 
     except GitError as e:
