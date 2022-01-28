@@ -1,0 +1,35 @@
+name: 'Lint'
+description: 'Lint with pre-commit'
+
+inputs:
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.9"
+  pre-commit-version:
+    description: Pre-commit version to use
+    required: false
+    default: "2.17.0"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - uses: ThePalaceProject/ci-scripts/.github/actions/poetry@${{ github.action_ref }}
+
+    - run: pip install pre-commit==${{ inputs.pre-commit-version }}
+      shell: bash
+
+    - uses: actions/cache@v2
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-${{ runner.os }}-py${{ inputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: pre-commit-${{ runner.os }}-py${{ inputs.python-version }}
+
+    - run: pre-commit run --all-files
+      shell: bash

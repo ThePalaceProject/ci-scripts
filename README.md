@@ -6,8 +6,9 @@
 
 ### Usage
 
-```
-usage: sync.py [-h] --upstream-org UPSTREAM_ORG --upstream-repo UPSTREAM_REPO --upstream-branch UPSTREAM_BRANCH --origin-branch ORIGIN_BRANCH path
+```shell
+usage: sync.py [-h] --upstream-org UPSTREAM_ORG --upstream-repo UPSTREAM_REPO
+               --upstream-branch UPSTREAM_BRANCH --origin-branch ORIGIN_BRANCH path
 
 positional arguments:
   path                  Path to local repository
@@ -49,7 +50,7 @@ jobs:
       ORIGIN_BRANCH: nypl/develop
 
     steps:
-    
+
       - name: Checkout repo to sync
         uses: actions/checkout@v2
         with:
@@ -65,11 +66,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-          
+
       - name: Install Python Packages
         run: pip install -r ci/sync-requirements.txt
 
       - name: Sync with upstream
         run: python ci/sync.py code
 ```
- 
