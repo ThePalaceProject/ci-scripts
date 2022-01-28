@@ -20,7 +20,7 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - uses: ThePalaceProject/ci-scripts/.github/actions/poetry@${{ github.action_ref }}
+    - uses: ./.github/actions/poetry
 
     - run: pip install pre-commit==${{ inputs.pre-commit-version }}
       shell: bash
