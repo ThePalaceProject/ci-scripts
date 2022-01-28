@@ -7,4 +7,4 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: ThePalaceProject/ci-scripts/.github/actions/lint@${{ github.sha }}
+      - uses: ThePalaceProject/ci-scripts/.github/actions/lint@add-actions
