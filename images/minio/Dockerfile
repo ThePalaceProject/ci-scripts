@@ -118,4 +118,12 @@ VOLUME ["/data"]
 EXPOSE 9000 9001
 
 # A plain, unconfigured server. Consumers override this with their own CMD/ENTRYPOINT.
+#
+# Note one deliberate difference from the upstream image: it set ENTRYPOINT to a
+# docker-entrypoint.sh that supplied the `minio` binary, so `docker run <image> server /data`
+# worked. There is no entrypoint here, so the binary has to be named:
+# `docker run <image> minio server /data`. The old form fails with
+# `exec: "server": executable file not found in $PATH` and the container never starts. The three
+# CI Dockerfiles set their own command and are unaffected, but anything invoking the image
+# directly -- a README, a docker-compose service, a one-off container -- needs the full command.
 CMD ["minio", "server", "/data", "--address", ":9000", "--console-address", ":9001"]
