@@ -13,9 +13,13 @@ name: Build MinIO Mirror
 # verify the pinned checksums, then throw the result away — an unmerged branch must never be able
 # to overwrite the release tag that three other repos pin their CI to.
 #
-# One-time manual step: GHCR packages are created private. After the first successful run, set the
-# package visibility to public (Org -> Packages -> palace-ci-minio -> Package settings), matching
-# the other Palace images. Without that, every developer and CI job would need a docker login.
+# The package is public, matching the other Palace images, so no docker login is needed by
+# developers or CI. That is not something this workflow can set: GHCR creates packages private, and
+# the visibility was flipped by hand (Org -> Packages -> palace-ci-minio -> Package settings). If
+# the package is ever recreated, it has to be flipped again.
+#
+# This mirror is meant to be short-lived. PP-5245 tracks replacing MinIO outright:
+# https://ebce-lyrasis.atlassian.net/browse/PP-5245
 
 on:
   push:

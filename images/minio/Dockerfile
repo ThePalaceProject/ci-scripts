@@ -31,8 +31,11 @@
 # Dockerfiles — they change only their `FROM` line. Baking configuration in here would fork
 # the image between repos immediately.
 #
-# This mirror is a bridge, not a destination; see the retirement ticket for replacing MinIO
-# outright. Do not add features to it.
+# This mirror is a bridge, not a destination. PP-5245 tracks replacing MinIO outright:
+# https://ebce-lyrasis.atlassian.net/browse/PP-5245
+# Do not add features to it. Retiring it gets harder the longer it lives: GitHub does not allow
+# self-service deletion of a public package once any version passes 5,000 downloads, after which
+# it becomes a Support request.
 #
 # Updating
 # --------
