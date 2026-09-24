@@ -1,5 +1,33 @@
 # CI-Scripts
 
+Shared CI helpers for the Palace Project repositories.
+
+## images/minio
+
+A mirror of the upstream MinIO server image, published to
+`ghcr.io/thepalaceproject/palace-ci-minio` by
+[`.github/workflows/build-minio-mirror.yml`](.github/workflows/build-minio-mirror.yml).
+
+MinIO withdrew anonymous public access to its server image from both Docker Hub and quay.io, so
+`FROM minio/minio` now fails with a 401 before any test suite starts. The mirror is assembled from
+MinIO's official GitHub release binaries — the one channel still served anonymously — each pinned
+by sha256. It is a bare passthrough: no credentials, no buckets, no entrypoint script, because the
+repos that consume it each configure MinIO differently.
+
+Consumers pin the exact release tag; the mirror deliberately publishes no `latest`:
+
+```dockerfile
+FROM ghcr.io/thepalaceproject/palace-ci-minio:RELEASE.2025-09-07T16-13-09Z
+```
+
+Used by `circulation`, `library-registry` and `virtual-library-card`. Only pushes to `main`
+publish — pull requests and manual runs from a branch build and validate, then discard, so an
+unmerged branch cannot overwrite the tag those repos depend on.
+
+This mirror is a bridge, not a destination: the intent is to drop MinIO for a maintained
+S3-compatible image. Note that GitHub does not allow self-service deletion of a public package
+once any version passes 5,000 downloads.
+
 ## sync.py
 
 `sync.py` is a helper script used in our CI process to keep a branch on our repositories in sync with upstream.
