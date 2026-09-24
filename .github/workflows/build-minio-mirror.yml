@@ -1,0 +1,127 @@
+name: Build MinIO Mirror
+
+# Publishes ghcr.io/thepalaceproject/palace-ci-minio, the MinIO image used by the test suites of
+# circulation, library-registry and virtual-library-card. MinIO withdrew anonymous public access
+# to its own image (Docker Hub, then quay.io), so we host a copy built from its official GitHub
+# release binaries. See images/minio/Dockerfile for the full rationale.
+#
+# The image is pinned to a single upstream release and its content is fully determined by the
+# checksums in that Dockerfile, so there is no scheduled rebuild: running this again produces the
+# same image. It runs only when the Dockerfile or this workflow changes, or on demand.
+#
+# Only main publishes. Pull requests and manual runs from a branch build both architectures and
+# verify the pinned checksums, then throw the result away — an unmerged branch must never be able
+# to overwrite the release tag that three other repos pin their CI to.
+#
+# One-time manual step: GHCR packages are created private. After the first successful run, set the
+# package visibility to public (Org -> Packages -> palace-ci-minio -> Package settings), matching
+# the other Palace images. Without that, every developer and CI job would need a docker login.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-minio-mirror.yml
+      - images/minio/Dockerfile
+  # Build (but do not push) on PRs that touch the mirror, so a broken Dockerfile or workflow is
+  # caught in review rather than on main, where the failure would leave the image unpublished.
+  pull_request:
+    paths:
+      - .github/workflows/build-minio-mirror.yml
+      - images/minio/Dockerfile
+  workflow_dispatch:
+
+concurrency:
+  group: build-minio-mirror-${{ github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build MinIO Mirror
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # See comment here: https://github.com/actions/runner-images/issues/1187#issuecomment-686735760
+      - name: Disable network offload
+        run: sudo ethtool -K eth0 tx off rx off
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Publishing is gated on the ref rather than the event, so a workflow_dispatch from an
+      # unmerged branch builds and validates but cannot push over the pinned tag.
+      - name: Check whether this run publishes
+        id: gate
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "This run publishes to GHCR."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Ref is ${GITHUB_REF}, not refs/heads/main: building for validation only."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Login to GitHub Container Registry
+        if: steps.gate.outputs.publish == 'true'
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Dockerfile is the single source of truth for which upstream release we mirror, so the
+      # tag is read back out of it rather than duplicated here where the two could drift apart.
+      - name: Determine image and tag
+        id: image
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/palace-ci-minio"
+          tag=$(sed -n 's/^ARG MINIO_RELEASE=\(.*\)$/\1/p' images/minio/Dockerfile | head -1)
+          if [[ -z "$tag" ]]; then
+            echo "::error::Could not read MINIO_RELEASE from images/minio/Dockerfile"
+            exit 1
+          fi
+          echo "Image: $image:$tag"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # The mirror contains no RUN instructions, so both architectures cross-build on this single
+      # amd64 runner with no QEMU emulation and no per-arch runner matrix.
+      - name: Build mirror image
+        uses: docker/build-push-action@v7
+        with:
+          context: images/minio
+          file: ./images/minio/Dockerfile
+          target: minio
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.gate.outputs.publish == 'true' }}
+          # Deliberately no `latest` tag: consumers pin this exact release. Following a moving
+          # upstream tag is part of how we ended up needing this mirror.
+          tags: ${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}
+
+      - name: Verify published image
+        if: steps.gate.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          ref="${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}"
+          docker buildx imagetools inspect "$ref"
+          # Confirm both architectures actually made it into the published manifest list.
+          platforms=$(docker buildx imagetools inspect "$ref" --raw \
+            | jq -r '.manifests[] | select(.platform.os != "unknown") | "\(.platform.os)/\(.platform.architecture)"')
+          echo "Published platforms: $platforms"
+          for platform in linux/amd64 linux/arm64; do
+            grep -qx "$platform" <<< "$platforms" \
+              || { echo "::error::$platform missing from $ref"; exit 1; }
+          done
+          # Smoke-test the runner's native architecture.
+          docker run --rm --entrypoint /usr/bin/minio "$ref" --version
