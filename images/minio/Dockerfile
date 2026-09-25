@@ -31,8 +31,11 @@
 # Dockerfiles — they change only their `FROM` line. Baking configuration in here would fork
 # the image between repos immediately.
 #
-# This mirror is a bridge, not a destination; see the retirement ticket for replacing MinIO
-# outright. Do not add features to it.
+# This mirror is a bridge, not a destination. PP-5245 tracks replacing MinIO outright:
+# https://ebce-lyrasis.atlassian.net/browse/PP-5245
+# Do not add features to it. Retiring it gets harder the longer it lives: GitHub does not allow
+# self-service deletion of a public package once any version passes 5,000 downloads, after which
+# it becomes a Support request.
 #
 # Updating
 # --------
@@ -115,4 +118,12 @@ VOLUME ["/data"]
 EXPOSE 9000 9001
 
 # A plain, unconfigured server. Consumers override this with their own CMD/ENTRYPOINT.
+#
+# Note one deliberate difference from the upstream image: it set ENTRYPOINT to a
+# docker-entrypoint.sh that supplied the `minio` binary, so `docker run <image> server /data`
+# worked. There is no entrypoint here, so the binary has to be named:
+# `docker run <image> minio server /data`. The old form fails with
+# `exec: "server": executable file not found in $PATH` and the container never starts. The three
+# CI Dockerfiles set their own command and are unaffected, but anything invoking the image
+# directly -- a README, a docker-compose service, a one-off container -- needs the full command.
 CMD ["minio", "server", "/data", "--address", ":9000", "--console-address", ":9001"]

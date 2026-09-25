@@ -24,9 +24,20 @@ Used by `circulation`, `library-registry` and `virtual-library-card`. Only pushe
 publish — pull requests and manual runs from a branch build and validate, then discard, so an
 unmerged branch cannot overwrite the tag those repos depend on.
 
+### Retirement
+
 This mirror is a bridge, not a destination: the intent is to drop MinIO for a maintained
-S3-compatible image. Note that GitHub does not allow self-service deletion of a public package
-once any version passes 5,000 downloads.
+S3-compatible image, tracked by [PP-5245](https://ebce-lyrasis.atlassian.net/browse/PP-5245).
+
+It should be short-lived for two reasons. We do not want to become a de-facto public distributor of
+a frozen MinIO build. And GitHub does not allow self-service deletion of a public package once any
+version passes 5,000 downloads — above that it becomes a Support request. With `pull=True` on every
+tox-docker build, ephemeral CI runners and three repos pulling, that threshold arrives faster than
+it sounds, so check the count before assuming deletion is still a one-liner:
+
+```
+gh api -X DELETE /orgs/ThePalaceProject/packages/container/palace-ci-minio
+```
 
 ## sync.py
 
